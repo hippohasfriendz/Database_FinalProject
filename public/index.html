@@ -276,17 +276,13 @@
       text-align: left;
       vertical-align: middle;
       border-right: var(--border-width) solid var(--ink);
+      white-space: nowrap; 
     }
 
     th:last-child, td:last-child {
       border-right: none;
-    }
-
-    th {
-      background: #e0e0e0;
-      font-weight: 900;
-      text-transform: uppercase;
-      font-size: 0.95rem;
+      white-space: normal; 
+      min-width: 200px;    
     }
 
     tr:last-child td {

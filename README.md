@@ -54,19 +54,41 @@ DB_TRUST_SERVER_CERTIFICATE=true
 
 ## 安裝與啟動
 
-安裝套件：
+方法一
+
+- 安裝套件：
 
 ```bash
 npm install
 ```
 
-啟動伺服器：
+- 啟動伺服器：
 
 ```bash
 npm start
 ```
 
-瀏覽器開啟：
+- 瀏覽器開啟：
+
+```text
+http://localhost:3030
+```
+
+方法二
+
+- 安裝套件：
+
+```bash
+npm install express cors dotenv mssql msnodesqlv8
+```
+
+- 啟動伺服器：
+
+```bash
+node server.js
+```
+
+- 瀏覽器開啟：
 
 ```text
 http://localhost:3030

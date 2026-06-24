@@ -31,6 +31,7 @@
       font-family: 'Courier New', Courier, ui-sans-serif, system-ui, sans-serif; 
       letter-spacing: 0.5px; 
       line-height: 1.5;
+      overflow-x: hidden;
     } 
 
     button, input, textarea, select { 
@@ -167,7 +168,6 @@
       padding-bottom: 8px; 
       padding-right: 8px;  
       overflow-x: auto; 
-      
       scrollbar-width: none; 
       -ms-overflow-style: none; 
     } 
@@ -258,46 +258,68 @@
 
     .table-wrap {
       width: 100%;
-      overflow-x: auto;
       border: var(--border-width) solid var(--ink);
       box-shadow: var(--block-shadow);
       background: #fff;
+      overflow: hidden; 
     }
 
     table {
       width: 100%;
-      min-width: 800px;
       border-collapse: collapse;
+      table-layout: auto; 
+    }
+
+    th {
+      background: #e0e0e0;
+      font-weight: 900;
     }
 
     th, td {
-      padding: 14px 16px;
+      padding: clamp(4px, 1vw, 12px) clamp(4px, 0.8vw, 12px);
       border-bottom: var(--border-width) solid var(--ink);
-      text-align: left;
-      vertical-align: middle;
       border-right: var(--border-width) solid var(--ink);
-      white-space: nowrap; 
+      text-align: center;
+      vertical-align: middle;
+      font-size: clamp(11px, 1vw + 0.1rem, 16px);
+      line-height: 1.4;
     }
 
     th:last-child, td:last-child {
       border-right: none;
-      white-space: normal; 
-      min-width: 200px;    
     }
 
-    tr:last-child td {
-      border-bottom: none;
+    .cell-id { white-space: nowrap; font-weight: 800; width: 1%; }
+    .cell-name { white-space: nowrap; font-weight: 800; width: 1%; }
+    .cell-date { white-space: nowrap; font-family: 'Courier New', Courier, monospace; letter-spacing: -0.5px; width: 1%; }
+    .cell-badge { white-space: nowrap; width: 1%; }
+    .cell-action { white-space: nowrap; width: 1%; }
+    .cell-text { text-align: left; overflow-wrap: anywhere; min-width: 80px; }
+
+    .action-group {
+      display: flex;
+      gap: 0.5em;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .action-group button {
+      min-height: 32px;
+      padding: 0 12px;
+      white-space: nowrap;
     }
 
     .badge { 
       display: inline-block; 
-      padding: 6px 12px; 
+      padding: 0.4em 0.8em; 
       text-align: center; 
-      font-size: 0.85rem; 
+      font-size: 0.85em; 
       font-weight: 800; 
       border: var(--border-width) solid var(--ink); 
       box-shadow: 2px 2px 0px var(--ink); 
       background: #fff;
+      white-space: nowrap;
     } 
 
     .badge.available, .badge.approved, .badge.good, .badge.returned, .badge.completed { background: var(--green); color: var(--ink); } 
@@ -350,10 +372,43 @@
     body:not(.logged-in) .topbar .login-control { display: none; }
     body.logged-in .login-container { display: none; }
 
+    @media (max-width: 1100px) {
+      th, td {
+        padding: 6px 4px;
+        font-size: clamp(10px, 1.2vw, 14px);
+      }
+      .action-group {
+        flex-direction: column;
+        align-items: center;
+      }
+      .action-group button {
+        padding: 0 8px;
+        min-height: 28px;
+        font-size: 11px;
+      }
+      .badge {
+        padding: 4px;
+        font-size: 11px;
+      }
+    }
+
     @media (max-width: 800px) { 
       .status-strip { grid-template-columns: 1fr; } 
       .form-grid { grid-template-columns: 1fr; }
       .topbar { flex-direction: column; align-items: flex-start; }
+      
+      th.cell-name, td.cell-name {
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+        letter-spacing: 2px;
+        padding: 8px 4px;
+      }
+      
+      th.cell-id {
+        white-space: normal; 
+        min-width: 40px;
+        word-break: break-all;
+      }
     }
   </style>
 </head>
@@ -653,12 +708,17 @@
         return;
       }
 
-      const head = columns.map((column) => `<th>${column.label}</th>`).join('');
+      const head = columns.map((column) => {
+        const typeCls = column.type ? `class="cell-${column.type}"` : '';
+        return `<th ${typeCls}>${column.label}</th>`;
+      }).join('');
+      
       const body = rows.map((row) => {
         const cells = columns.map((column) => {
           const rawValue = typeof column.value === 'function' ? column.value(row) : row[column.key];
           const value = column.isHtml ? rawValue : escapeHtml(formatValue(rawValue));
-          return `<td>${value}</td>`;
+          const typeCls = column.type ? `class="cell-${column.type}"` : '';
+          return `<td ${typeCls}>${value}</td>`;
         }).join('');
         return `<tr>${cells}</tr>`;
       }).join('');
@@ -726,13 +786,13 @@
         const equipment = await apiFetch('/api/equipment');
 
         renderTable('equipmentTable', equipment, [
-          { key: 'EquipmentID', label: '編號' },
-          { key: 'EquipmentName', label: '名稱' },
-          { key: 'CategoryName', label: '分類' },
-          { key: 'AssetTag', label: '資產標籤' },
-          { key: 'Brand', label: '品牌' },
-          { key: 'Model', label: '型號' },
-          { key: 'Status', label: '狀態', value: (row) => statusBadge(row.Status), isHtml: true }
+          { key: 'EquipmentID', label: '編號', type: 'id' },
+          { key: 'EquipmentName', label: '名稱', type: 'text' },
+          { key: 'CategoryName', label: '分類', type: 'text' },
+          { key: 'AssetTag', label: '資產標籤', type: 'id' },
+          { key: 'Brand', label: '品牌', type: 'text' },
+          { key: 'Model', label: '型號', type: 'text' },
+          { key: 'Status', label: '狀態', type: 'badge', value: (row) => statusBadge(row.Status), isHtml: true }
         ]);
 
         const equipmentSelect = document.getElementById('equipmentSelect');
@@ -756,25 +816,26 @@
         const requests = await apiFetch('/api/borrow-requests');
 
         renderTable('borrowRequestsTable', requests, [
-          { key: 'RequestID', label: '編號' },
-          { key: 'ApplicantName', label: '申請人' },
-          { key: 'EquipmentInfo', label: '借用設備' },
-          { key: 'ExpectedBorrowDate', label: '借用日', value: (row) => `${formatDate(row.ExpectedBorrowDate)}`},
-          { key: 'ExpectedReturnDate', label: '歸還日', value: (row) => `${formatDate(row.ExpectedReturnDate)}`},
-          { key: 'Purpose', label: '用途' },
-          { key: 'RequestStatus', label: '狀態', value: (row) => statusBadge(row.RequestStatus), isHtml: true },
-          { key: 'ApproverName', label: '審核人' },
-          { key: 'RejectReason', label: '拒絕原因' },
+          { key: 'RequestID', label: '編號', type: 'id' },
+          { key: 'ApplicantName', label: '申請人', type: 'name' },
+          { key: 'EquipmentInfo', label: '借用設備', type: 'text' },
+          { key: 'ExpectedBorrowDate', label: '借用日', type: 'date', value: (row) => `${formatDate(row.ExpectedBorrowDate)}`},
+          { key: 'ExpectedReturnDate', label: '歸還日', type: 'date', value: (row) => `${formatDate(row.ExpectedReturnDate)}`},
+          { key: 'Purpose', label: '用途', type: 'text' },
+          { key: 'RequestStatus', label: '狀態', type: 'badge', value: (row) => statusBadge(row.RequestStatus), isHtml: true },
+          { key: 'ApproverName', label: '審核人', type: 'name' },
+          { key: 'RejectReason', label: '拒絕原因', type: 'text' },
           {
             key: 'Actions',
             label: '操作',
+            type: 'action',
             isHtml: true,
             value: (row) => {
               if (row.RequestStatus !== 'Pending' || !isCurrentUserAdmin()) return '';
               return `
-                <div style="display:flex; gap:8px;">
-                  <button class="primary-button" onclick="approveRequest(${row.RequestID})" style="min-height:36px; padding:0 12px;">核准</button>
-                  <button class="danger-button" onclick="rejectRequest(${row.RequestID})" style="min-height:36px; padding:0 12px;">拒絕</button>
+                <div class="action-group">
+                  <button class="primary-button" onclick="approveRequest(${row.RequestID})">核准</button>
+                  <button class="danger-button" onclick="rejectRequest(${row.RequestID})">拒絕</button>
                 </div>
               `;
             }
@@ -876,21 +937,24 @@
       try {
         const rows = await apiFetch('/api/borrow-records');
         renderTable('borrowRecordsTable', rows, [
-          { key: 'BorrowRecordID', label: '借用紀錄編號' },
-          { key: 'RequestID', label: '申請編號' },
-          { key: 'ApplicantName', label: '申請人' },
-          { key: 'BorrowedAt', label: '借出日期', value: (row) => formatDate(row.BorrowedAt) },
-          { key: 'DueDate', label: '應歸還日', value: (row) => formatDate(row.DueDate) },
-          { key: 'HandledByName', label: '經手人' },
-          { key: 'BorrowStatus', label: '借用狀態', value: (row) => statusBadge(row.BorrowStatus), isHtml: true },
+          { key: 'BorrowRecordID', label: '借用紀錄編號', type: 'id' },
+          { key: 'RequestID', label: '申請編號', type: 'id' },
+          { key: 'ApplicantName', label: '申請人', type: 'name' },
+          { key: 'BorrowedAt', label: '借出日期', type: 'date', value: (row) => formatDate(row.BorrowedAt) },
+          { key: 'DueDate', label: '應歸還日', type: 'date', value: (row) => formatDate(row.DueDate) },
+          { key: 'HandledByName', label: '經手人', type: 'name' },
+          { key: 'BorrowStatus', label: '借用狀態', type: 'badge', value: (row) => statusBadge(row.BorrowStatus), isHtml: true },
           {
             key: 'Actions',
             label: '操作',
+            type: 'action',
             isHtml: true,
             value: (row) => {
               if (row.BorrowStatus !== 'Borrowed' || !isCurrentUserAdmin()) return '';
               return `
-                <button class="success-button" onclick="returnBorrowRecord(${row.BorrowRecordID})" style="min-height:36px; padding:0 12px;">歸還</button>
+                <div class="action-group">
+                  <button class="success-button" onclick="returnBorrowRecord(${row.BorrowRecordID})">歸還</button>
+                </div>
               `;
             }
           }
@@ -951,15 +1015,15 @@
       try {
         const rows = await apiFetch('/api/return-records');
         renderTable('returnRecordsTable', rows, [
-          { key: 'ReturnRecordID', label: '歸還紀錄編號' },
-          { key: 'BorrowRecordID', label: '借用紀錄編號' },
-          { key: 'RequestID', label: '申請編號' },
-          { key: 'ApplicantName', label: '申請人' },
-          { key: 'ReturnedAt', label: '歸還日期', value: (row) => formatDate(row.ReturnedAt) },
-          { key: 'ConditionStatus', label: '設備狀況', value: (row) => statusBadge(row.ConditionStatus), isHtml: true },
-          { key: 'LateFee', label: '逾期費用' },
-          { key: 'HandledByName', label: '經手人' },
-          { key: 'Note', label: '備註' }
+          { key: 'ReturnRecordID', label: '歸還紀錄編號', type: 'id' },
+          { key: 'BorrowRecordID', label: '借用紀錄編號', type: 'id' },
+          { key: 'RequestID', label: '申請編號', type: 'id' },
+          { key: 'ApplicantName', label: '申請人', type: 'name' },
+          { key: 'ReturnedAt', label: '歸還日期', type: 'date', value: (row) => formatDate(row.ReturnedAt) },
+          { key: 'ConditionStatus', label: '設備狀況', type: 'badge', value: (row) => statusBadge(row.ConditionStatus), isHtml: true },
+          { key: 'LateFee', label: '逾期費用', type: 'id' },
+          { key: 'HandledByName', label: '經手人', type: 'name' },
+          { key: 'Note', label: '備註', type: 'text' }
         ]);
       } catch (error) {
         showMessage(error.message, 'error');
@@ -971,14 +1035,14 @@
         const rows = await apiFetch('/api/reports/join');
         document.getElementById('reportTitle').textContent = '借用明細報表（JOIN 查詢）';
         renderTable('reportTable', rows, [
-          { key: 'RequestID', label: '編號' },
-          { key: 'ApplicantName', label: '申請人' },
-          { key: 'Role', label: '身分' },
-          { key: 'EquipmentName', label: '設備名稱' },
-          { key: 'CategoryName', label: '分類' },
-          { key: 'ExpectedBorrowDate', label: '預計借用', value: (row) => formatDate(row.ExpectedBorrowDate) },
-          { key: 'ExpectedReturnDate', label: '預計歸還', value: (row) => formatDate(row.ExpectedReturnDate) },
-          { key: 'RequestStatus', label: '狀態', value: (row) => statusBadge(row.RequestStatus), isHtml: true }
+          { key: 'RequestID', label: '編號', type: 'id' },
+          { key: 'ApplicantName', label: '申請人', type: 'name' },
+          { key: 'Role', label: '身分', type: 'text' },
+          { key: 'EquipmentName', label: '設備名稱', type: 'text' },
+          { key: 'CategoryName', label: '分類', type: 'text' },
+          { key: 'ExpectedBorrowDate', label: '預計借用', type: 'date', value: (row) => formatDate(row.ExpectedBorrowDate) },
+          { key: 'ExpectedReturnDate', label: '預計歸還', type: 'date', value: (row) => formatDate(row.ExpectedReturnDate) },
+          { key: 'RequestStatus', label: '狀態', type: 'badge', value: (row) => statusBadge(row.RequestStatus), isHtml: true }
         ]);
       } catch (error) {
         showMessage(error.message, 'error');
@@ -990,8 +1054,8 @@
         const rows = await apiFetch('/api/reports/aggregate');
         document.getElementById('reportTitle').textContent = '類別借用統計（Aggregate 查詢）';
         renderTable('reportTable', rows, [
-          { key: 'CategoryName', label: '分類名稱' },
-          { key: 'BorrowCount', label: '借用次數' }
+          { key: 'CategoryName', label: '分類名稱', type: 'text' },
+          { key: 'BorrowCount', label: '借用次數', type: 'id' }
         ]);
       } catch (error) {
         showMessage(error.message, 'error');
@@ -1003,8 +1067,8 @@
         const rows = await apiFetch('/api/reports/subquery');
         document.getElementById('reportTitle').textContent = '熱門設備分析（Subquery 查詢）';
         renderTable('reportTable', rows, [
-          { key: 'EquipmentName', label: '設備名稱' },
-          { key: 'BorrowCount', label: '借用次數' }
+          { key: 'EquipmentName', label: '設備名稱', type: 'text' },
+          { key: 'BorrowCount', label: '借用次數', type: 'id' }
         ]);
       } catch (error) {
         showMessage(error.message, 'error');
